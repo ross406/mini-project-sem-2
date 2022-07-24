@@ -65,7 +65,8 @@ def getpost():
         posts = []
         for i in posts_collection.find():
             posts.append(
-                {"_ID": str(ObjectId(i["_id"])), "name": i["name"], "text": i["text"], "user": i["user"], "likes": i["likes"],
+                {"_ID": str(ObjectId(i["_id"])), "name": i["name"], "text": i["text"], "user": i["user"],
+                 "likes": i["likes"],
                  "comments": i["comments"]})
         return jsonify(posts)
     elif request.method == "POST":
@@ -73,8 +74,9 @@ def getpost():
         # print(errors)
         userid = get_jwt_identity()[0]
         # print(email[0])
-        id = posts_collection.insert_one({"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
-                            "comments": []}).inserted_id
+        id = posts_collection.insert_one(
+            {"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
+             "comments": []}).inserted_id
         logging.debug('This is a debug message', id)
         return jsonify(str(ObjectId(id)))
         # return id
@@ -191,7 +193,6 @@ def commentpost(id):
     return jsonify({'msg': 'User dose not exist'}), 400
 
 
-
 # Delete a Comment
 @app.route('/api/posts/comment/<id>/<comment_idx>', methods=["DELETE"])
 @jwt_required()
@@ -202,7 +203,7 @@ def deletecomment(id, comment_idx):
     print(user)
     if (user):
         post = posts_collection.find_one({"_id": ObjectId(id)})
-        if(post):
+        if (post):
             print(comment_idx)
             comments = post["comments"]
             del comments[int(comment_idx)]
@@ -216,25 +217,50 @@ def deletecomment(id, comment_idx):
             return jsonify({'msg': 'Post dose not exist'}), 400
     return jsonify({'msg': 'User dose not exist'}), 400
 
-# Get All Posts Or Add New Post
-@app.route('/api/profile', methods=["GET", "POST"])
+
+# Get Profile Or Add New Profile or Delete profile and user
+@app.route('/api/profile', methods=["GET", "POST", "DELETE"])
 @jwt_required()
 def get_post_profile():
     if request.method == "GET":
-        # userid = get_jwt_identity()[0]
-        # print(userid)
-        # posts = []
-        # for i in posts_collection.find():
-        #     posts.append(
-        #         {"_ID": str(ObjectId(i["_id"])), "name": i["name"], "text": i["text"], "user": i["user"], "likes": i["likes"],
-        #          "comments": i["comments"]})
-        return jsonify("GET")
+        userid = get_jwt_identity()[0]
+        res = profile_collection.find_one({"user": ObjectId(userid)})
+        if not res:
+            return jsonify({'msg': 'There is no Profile for this User'}), 404
+        else:
+            return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
+                    "handle": res["handle"],
+                    "company": res["company"], "website": res["website"], "location": res["location"],
+                    "bio": res["bio"],
+                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+                    "social": res["social"]}
+    elif request.method == "DELETE":
+        userid = get_jwt_identity()[0]
+        user = users_collection.find_one({"_id": ObjectId(userid)})
+        if user:
+            profile = profile_collection.find_one({"user": ObjectId(userid)})
+            if profile:
+                profile_collection.find_one_and_delete({"user": ObjectId(userid)})
+            else:
+                return jsonify({'msg': 'Profile dose not exist'}), 400
+
+            users_collection.find_one_and_delete({"_id": ObjectId(userid)})
+            return jsonify({'msg': 'Profile and user deleted!!!'})
+        else:
+            return jsonify({'msg': 'User dose not exist'}), 400
     elif request.method == "POST":
         # errors = validatePostInput(request.json)
         # print(errors)
         userid = get_jwt_identity()[0]
+        email = get_jwt_identity()[1]
+        name = get_jwt_identity()[2]
         profile_fields = {}
         profile_fields['user'] = ObjectId(userid)
+        profile_fields['email'] = email
+        profile_fields['name'] = name
+        profile_fields['experience'] = []
+        profile_fields['education'] = []
+        profile_fields['date'] = time.time()
         if request.json["handle"]:
             profile_fields['handle'] = request.json["handle"]
         if request.json["company"]:
@@ -268,8 +294,15 @@ def get_post_profile():
         if (user):
             profile = profile_collection.find_one({"user": ObjectId(userid)})
             if profile:
-               complete_profile = profile_collection.update_one({"user": ObjectId(userid)}, {"$set": profile_fields})
-               return jsonify(str(complete_profile))
+                profile_collection.update_one({"user": ObjectId(userid)}, {"$set": profile_fields})
+                res = profile_collection.find_one({"user": ObjectId(userid)})
+                return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
+                        "handle": res["handle"],
+                        "company": res["company"], "website": res["website"], "location": res["location"],
+                        "bio": res["bio"],
+                        "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+                        "social": res["social"], "experience": res["experience"], "education": res["education"],
+                        "date": res["date"]}
             else:
                 profile_handle = profile_collection.find_one({"handle": profile_fields['handle']})
                 if profile_handle:
@@ -279,11 +312,186 @@ def get_post_profile():
                     return jsonify(str(ObjectId(profile_id)))
 
         # print(email[0])
-        id = profile_collection.insert_one({"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
-                            "comments": []}).inserted_id
+        id = profile_collection.insert_one(
+            {"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
+             "comments": []}).inserted_id
         logging.debug('This is a debug message', id)
         return jsonify(str(ObjectId(id)))
         # return id
+
+
+# Get All Profiles
+@app.route('/api/profile/all', methods=["GET"])
+# @jwt_required()
+def get_all_profiles():
+    profiles = []
+    for res in profile_collection.find():
+        profiles.append(
+            {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"], "handle": res["handle"],
+             "company": res["company"], "website": res["website"], "location": res["location"], "bio": res["bio"],
+             "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+             "social": res["social"], "experience": res["experience"], "education": res["education"],
+             "date": res["date"]}
+        )
+    return jsonify(profiles)
+
+
+# Get Profile by handle
+@app.route('/api/profile/handle/<handle>', methods=["GET"])
+# @jwt_required()
+def get_profile_by_handle(handle):
+    res = profile_collection.find_one({"handle": handle})
+    if not res:
+        return jsonify({'msg': 'There is no Profile for this User'}), 404
+    else:
+        return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"], "handle": res["handle"],
+                "company": res["company"], "website": res["website"], "location": res["location"], "bio": res["bio"],
+                "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+                "social": res["social"], "experience": res["experience"], "education": res["education"],
+                "date": res["date"]}
+
+
+# Get Profile by userId
+@app.route('/api/profile/user/<userid>', methods=["GET"])
+# @jwt_required()
+def get_profile_by_userid(userid):
+    res = profile_collection.find_one({"user": ObjectId(userid)})
+    if not res:
+        return jsonify({'msg': 'There is no Profile for this User'}), 404
+    else:
+        return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"], "handle": res["handle"],
+                "company": res["company"], "website": res["website"], "location": res["location"], "bio": res["bio"],
+                "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+                "social": res["social"], "experience": res["experience"], "education": res["education"],
+                "date": res["date"]}
+
+
+# add experience to profile
+@app.route('/api/profile/experience', methods=["POST"])
+@jwt_required()
+def add_exp_to_profile():
+    # errors = validatePostInput(request.json)
+    # print(errors)
+    userid = get_jwt_identity()[0]
+    new_exp = {}
+    new_exp['title'] = request.json["title"]
+    new_exp['company'] = request.json["company"]
+    new_exp['location'] = request.json["location"]
+    new_exp['from'] = request.json["from"]
+    new_exp['to'] = request.json["to"]
+    new_exp['current'] = request.json["current"]
+    new_exp['description'] = request.json["description"]
+
+    user = users_collection.find_one({"_id": ObjectId(userid)})
+    if (user):
+        profile = profile_collection.find_one({"user": ObjectId(userid)})
+        if profile:
+            experience = profile["experience"]
+            experience.append(new_exp)
+            profile_collection.update_one({"user": ObjectId(userid)}, {"$set": {
+                "experience": experience
+            }})
+            res = profile_collection.find_one({"user": ObjectId(userid)})
+            return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
+                    "handle": res["handle"],
+                    "company": res["company"], "website": res["website"], "location": res["location"],
+                    "bio": res["bio"],
+                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+                    "social": res["social"], "experience": res["experience"], "education": res["education"],
+                    "date": res["date"]}
+        else:
+            return jsonify({'msg': 'Profile dose not exist'}), 400
+    return jsonify({'msg': 'User dose not exist'}), 400
+
+# add education to profile
+@app.route('/api/profile/education', methods=["POST"])
+@jwt_required()
+def add_education_to_profile():
+    # errors = validatePostInput(request.json)
+    # print(errors)
+    userid = get_jwt_identity()[0]
+    new_education = {}
+    new_education['school'] = request.json["school"]
+    new_education['degree'] = request.json["degree"]
+    new_education['fieldofstudy'] = request.json["fieldofstudy"]
+    new_education['from'] = request.json["from"]
+    new_education['to'] = request.json["to"]
+    new_education['current'] = request.json["current"]
+    new_education['description'] = request.json["description"]
+
+    user = users_collection.find_one({"_id": ObjectId(userid)})
+    if (user):
+        profile = profile_collection.find_one({"user": ObjectId(userid)})
+        if profile:
+            education = profile["education"]
+            education.append(new_education)
+            profile_collection.update_one({"user": ObjectId(userid)}, {"$set": {
+                "education": education
+            }})
+            res = profile_collection.find_one({"user": ObjectId(userid)})
+            return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
+                    "handle": res["handle"],
+                    "company": res["company"], "website": res["website"], "location": res["location"],
+                    "bio": res["bio"],
+                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+                    "social": res["social"], "experience": res["experience"], "education": res["education"],
+                    "date": res["date"]}
+        else:
+            return jsonify({'msg': 'Profile dose not exist'}), 400
+    return jsonify({'msg': 'User dose not exist'}), 400
+
+# Delete experience from Profile
+@app.route('/api/profile/experience/<exp_idx>', methods=["DELETE"])
+@jwt_required()
+def delete_experience(exp_idx):
+    userid = get_jwt_identity()[0]
+    user = users_collection.find_one({"_id": ObjectId(userid)})
+    if (user):
+        profile = profile_collection.find_one({"user": ObjectId(userid)})
+        if (profile):
+            experience = profile["experience"]
+            del experience[int(exp_idx)]
+            profile_collection.update_one({"user": ObjectId(userid)}, {"$set": {
+                "experience": experience,
+            }})
+            res = profile_collection.find_one({"user": ObjectId(userid)})
+            return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
+                    "handle": res["handle"],
+                    "company": res["company"], "website": res["website"], "location": res["location"],
+                    "bio": res["bio"],
+                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+                    "social": res["social"], "experience": res["experience"], "education": res["education"],
+                    "date": res["date"]}
+        else:
+            return jsonify({'msg': 'profile dose not exist'}), 400
+    return jsonify({'msg': 'User dose not exist'}), 400
+
+# Delete education from Profile
+@app.route('/api/profile/education/<edu_idx>', methods=["DELETE"])
+@jwt_required()
+def delete_education(edu_idx):
+    userid = get_jwt_identity()[0]
+    user = users_collection.find_one({"_id": ObjectId(userid)})
+    if (user):
+        profile = profile_collection.find_one({"user": ObjectId(userid)})
+        if (profile):
+            education = profile["education"]
+            del education[int(edu_idx)]
+            profile_collection.update_one({"user": ObjectId(userid)}, {"$set": {
+                "education": education,
+            }})
+            res = profile_collection.find_one({"user": ObjectId(userid)})
+            return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
+                    "handle": res["handle"],
+                    "company": res["company"], "website": res["website"], "location": res["location"],
+                    "bio": res["bio"],
+                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
+                    "social": res["social"], "experience": res["experience"], "education": res["education"],
+                    "date": res["date"]}
+        else:
+            return jsonify({'msg': 'profile dose not exist'}), 400
+    return jsonify({'msg': 'User dose not exist'}), 400
+
 
 
 @app.route('/getone/<id>', methods=["GET"])
