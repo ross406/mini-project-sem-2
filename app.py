@@ -1,156 +1,296 @@
-from flask import Flask , request , jsonify
-from flask_cors import CORS 
-from flask_pymongo import PyMongo 
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from flask_pymongo import PyMongo
 from bson import ObjectId
 import hashlib
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 import datetime
 import json
 import logging
+import time
 from validation import validatePostInput
+
 app = Flask(__name__)
 # connect your mongodb after installation
-app.config["MONGO_URI"]='mongodb://localhost:27017/demo2'
+app.config["MONGO_URI"] = 'mongodb://localhost:27017/demo'
 mongo = PyMongo(app)
 
 CORS(app)
 db = mongo.db.demo2
 users_collection = db["users"]
 posts_collection = db["posts"]
+profile_collection = db["profile"]
 
-jwt = JWTManager(app) # initialize JWTManager
+jwt = JWTManager(app)  # initialize JWTManager
 app.config['JWT_SECRET_KEY'] = 'Your_Secret_Key'
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1) # define the life span of the token
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = datetime.timedelta(days=1)  # define the life span of the token
+
 
 # Register a new user
 @app.route("/api/users/register", methods=["POST"])
 def register():
-	new_user = request.get_json() # store the json body request
-	new_user["password"] = hashlib.sha256(new_user["password"].encode("utf-8")).hexdigest() # encrpt password
-	doc = users_collection.find_one({"email": new_user["email"]}) # check if user exist
-	if not doc:
-		users_collection.insert_one(new_user)
-		return jsonify({'msg': 'User created successfully'}), 201
-	else:
-		return jsonify({'msg': 'Email already exists'}), 409
+    new_user = request.get_json()  # store the json body request
+    new_user["password"] = hashlib.sha256(new_user["password"].encode("utf-8")).hexdigest()  # encrpt password
+    doc = users_collection.find_one({"email": new_user["email"]})  # check if user exist
+    if not doc:
+        users_collection.insert_one(new_user)
+        return jsonify({'msg': 'User created successfully'}), 201
+    else:
+        return jsonify({'msg': 'Email already exists'}), 409
+
 
 # Login with that user to get Access Token
 @app.route("/api/users/login", methods=["post"])
 def login():
-	login_details = request.get_json() # store the json body request
-	user_from_db = users_collection.find_one({'email': login_details['email']})  # search for user in database
+    login_details = request.get_json()  # store the json body request
+    user_from_db = users_collection.find_one({'email': login_details['email']})  # search for user in database
 
-	if user_from_db:
-		encrpted_password = hashlib.sha256(login_details['password'].encode("utf-8")).hexdigest()
-		if encrpted_password == user_from_db['password']:
-			access_token = create_access_token(identity=(str(user_from_db['_id']),user_from_db['email'])) # create jwt token
-			return jsonify(access_token=access_token), 200
+    if user_from_db:
+        encrpted_password = hashlib.sha256(login_details['password'].encode("utf-8")).hexdigest()
+        if encrpted_password == user_from_db['password']:
+            access_token = create_access_token(
+                identity=(str(user_from_db['_id']), user_from_db['email'], user_from_db['name']))  # create jwt token
+            return jsonify(access_token=access_token), 200
 
-	return jsonify({'msg': 'The email or password is incorrect'}), 401
+    return jsonify({'msg': 'The email or password is incorrect'}), 401
+
 
 # Get All Posts Or Add New Post
-@app.route('/api/posts',methods=["GET","POST"])
+@app.route('/api/posts', methods=["GET", "POST"])
 @jwt_required()
 def getpost():
     if request.method == "GET":
         userid = get_jwt_identity()[0]
         print(userid)
-        posts =[]
-        for i in db.find():
-            posts.append({"_ID":str(ObjectId(i["_id"])),"name":i["name"],"text":i["text"],"user":i["user"],"likes":[],"comments":[]})
+        posts = []
+        for i in posts_collection.find():
+            posts.append(
+                {"_ID": str(ObjectId(i["_id"])), "name": i["name"], "text": i["text"], "user": i["user"], "likes": i["likes"],
+                 "comments": i["comments"]})
         return jsonify(posts)
     elif request.method == "POST":
-        errors = validatePostInput(request.json)
+        # errors = validatePostInput(request.json)
         # print(errors)
         userid = get_jwt_identity()[0]
         # print(email[0])
-        id = db.insert_one({"name":request.json["name"],"text":request.json["text"],"user":userid,"likes":[],"comments":[]}).inserted_id
-        logging.debug('This is a debug message',id)
+        id = posts_collection.insert_one({"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
+                            "comments": []}).inserted_id
+        logging.debug('This is a debug message', id)
         return jsonify(str(ObjectId(id)))
         # return id
 
+
 # delete / update / get single post
-@app.route('/api/posts/<id>',methods=["DELETE","PUT","GET"])
+@app.route('/api/posts/<id>', methods=["DELETE", "PUT", "GET"])
 @jwt_required()
 def deleteputget(id):
     if request.method == "DELETE":
-        db.delete_one({"_id":ObjectId(id)})
-        return jsonify({"message":"deleted"})
+        posts_collection.delete_one({"_id": ObjectId(id)})
+        return jsonify({"message": "deleted"})
     elif request.method == "PUT":
-        db.update_one({"_id":ObjectId(id)},{"$set":{
-            "name":request.json["name"],
-            "text":request.json["text"],
-            "user":request.json["user"]
+        posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+            "name": request.json["name"],
+            "text": request.json["text"],
+            "user": request.json["user"]
         }})
-        return jsonify({"message":"updated"})
+        return jsonify({"message": "updated"})
     elif request.method == "GET":
-        res = db.find_one({"_id":ObjectId(id)})
-        return {"_ID":str(ObjectId(res["_id"])),"name":res["name"],"text":res["text"],"user":res["user"],"likes":res["likes"],"comments":res["comments"]}
+        res = posts_collection.find_one({"_id": ObjectId(id)})
+        return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                "likes": res["likes"], "comments": res["comments"]}
+
 
 # Like a Post
-@app.route('/api/posts/like/<id>',methods=["POST"])
+@app.route('/api/posts/like/<id>', methods=["POST"])
 @jwt_required()
 def likepost(id):
     userid = get_jwt_identity()[0]
     print(userid)
-    user = users_collection.find_one({"_id": ObjectId(userid)}) 
+    user = users_collection.find_one({"_id": ObjectId(userid)})
     print(user)
-    if(user):
-        post = db.find_one({"_id":ObjectId(id)})
+    if (user):
+        post = posts_collection.find_one({"_id": ObjectId(id)})
         print(post)
         if not post["likes"]:
-            db.update_one({"_id":ObjectId(id)},{"$set":{
-                "likes":[userid],
+            posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+                "likes": [userid],
             }})
-            res = db.find_one({"_id":ObjectId(id)})
-            return {"_ID":str(ObjectId(res["_id"])),"name":res["name"],"text":res["text"],"user":res["user"],"likes":res["likes"],"comments":res["comments"]}
+            res = posts_collection.find_one({"_id": ObjectId(id)})
+            return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                    "likes": res["likes"], "comments": res["comments"]}
         elif userid in post["likes"]:
             return jsonify({'msg': 'User already liked this Post'}), 400
         else:
             likes = post["likes"]
-            likes.unshift(userid)
-            db.update_one({"_id":ObjectId(id)},{"$set":{
-                "likes":likes,
+            likes.append(userid)
+            posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+                "likes": likes,
             }})
-            res = db.find_one({"_id":ObjectId(id)})
-            return {"_ID":str(ObjectId(res["_id"])),"name":res["name"],"text":res["text"],"user":res["user"],"likes":res["likes"],"comments":res["comments"]}
-    return jsonify({'msg': 'User dose not exist'}), 400   
+            res = posts_collection.find_one({"_id": ObjectId(id)})
+            return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                    "likes": res["likes"], "comments": res["comments"]}
+    return jsonify({'msg': 'User dose not exist'}), 400
 
 
 # UnLike a Post
-@app.route('/api/posts/unlike/<id>',methods=["POST"])
+@app.route('/api/posts/unlike/<id>', methods=["POST"])
 @jwt_required()
 def unlikepost(id):
     userid = get_jwt_identity()[0]
     print(userid)
-    user = users_collection.find_one({"_id": ObjectId(userid)}) 
+    user = users_collection.find_one({"_id": ObjectId(userid)})
     print(user)
-    if(user):
-        post = db.find_one({"_id":ObjectId(id)})
+    if (user):
+        post = posts_collection.find_one({"_id": ObjectId(id)})
         print(post)
         if not post["likes"]:
-           return jsonify({'msg': 'There are no likes on this post'}), 400
+            return jsonify({'msg': 'There are no likes on this post'}), 400
         elif userid in post["likes"]:
             likes = post["likes"]
             likes.remove(userid)
-            db.update_one({"_id":ObjectId(id)},{"$set":{
-                "likes":likes,
+            posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+                "likes": likes,
             }})
-            res = db.find_one({"_id":ObjectId(id)})
-            return {"_ID":str(ObjectId(res["_id"])),"name":res["name"],"text":res["text"],"user":res["user"],"likes":res["likes"],"comments":res["comments"]}
+            res = posts_collection.find_one({"_id": ObjectId(id)})
+            return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                    "likes": res["likes"], "comments": res["comments"]}
         else:
             return jsonify({'msg': 'You have not yet liked the post'}), 400
-    return jsonify({'msg': 'User dose not exist'}), 400  
+    return jsonify({'msg': 'User dose not exist'}), 400
+
+
+# Comment a Post
+@app.route('/api/posts/comment/<id>', methods=["POST"])
+@jwt_required()
+def commentpost(id):
+    userid = get_jwt_identity()[0]
+    print(userid)
+    user = users_collection.find_one({"_id": ObjectId(userid)})
+    print(user)
+    if (user):
+        post = posts_collection.find_one({"_id": ObjectId(id)})
+        print(post)
+        if not post["comments"]:
+            comment = {"id": time.time(), "name": request.json["name"], "text": request.json["text"], "user": userid}
+            posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+                "comments": [comment]
+            }})
+            res = posts_collection.find_one({"_id": ObjectId(id)})
+            return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                    "likes": res["likes"], "comments": res["comments"]}
+        else:
+            comments = post["comments"]
+            comment = {"id": time.time(), "name": request.json["name"], "text": request.json["text"], "user": userid}
+            comments.append(comment)
+            posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+                "comments": comments,
+            }})
+            res = posts_collection.find_one({"_id": ObjectId(id)})
+            return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                    "likes": res["likes"], "comments": res["comments"]}
+    return jsonify({'msg': 'User dose not exist'}), 400
 
 
 
-   
+# Delete a Comment
+@app.route('/api/posts/comment/<id>/<comment_idx>', methods=["DELETE"])
+@jwt_required()
+def deletecomment(id, comment_idx):
+    userid = get_jwt_identity()[0]
+    print(userid)
+    user = users_collection.find_one({"_id": ObjectId(userid)})
+    print(user)
+    if (user):
+        post = posts_collection.find_one({"_id": ObjectId(id)})
+        if(post):
+            print(comment_idx)
+            comments = post["comments"]
+            del comments[int(comment_idx)]
+            posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+                "comments": comments,
+            }})
+            res = posts_collection.find_one({"_id": ObjectId(id)})
+            return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                    "likes": res["likes"], "comments": res["comments"]}
+        else:
+            return jsonify({'msg': 'Post dose not exist'}), 400
+    return jsonify({'msg': 'User dose not exist'}), 400
 
-@app.route('/getone/<id>',methods=["GET"])
+# Get All Posts Or Add New Post
+@app.route('/api/profile', methods=["GET", "POST"])
+@jwt_required()
+def get_post_profile():
+    if request.method == "GET":
+        # userid = get_jwt_identity()[0]
+        # print(userid)
+        # posts = []
+        # for i in posts_collection.find():
+        #     posts.append(
+        #         {"_ID": str(ObjectId(i["_id"])), "name": i["name"], "text": i["text"], "user": i["user"], "likes": i["likes"],
+        #          "comments": i["comments"]})
+        return jsonify("GET")
+    elif request.method == "POST":
+        # errors = validatePostInput(request.json)
+        # print(errors)
+        userid = get_jwt_identity()[0]
+        profile_fields = {}
+        profile_fields['user'] = ObjectId(userid)
+        if request.json["handle"]:
+            profile_fields['handle'] = request.json["handle"]
+        if request.json["company"]:
+            profile_fields['company'] = request.json["company"]
+        if request.json["website"]:
+            profile_fields['website'] = request.json["website"]
+        if request.json["location"]:
+            profile_fields['location'] = request.json["location"]
+        if request.json["bio"]:
+            profile_fields['bio'] = request.json["bio"]
+        if request.json["status"]:
+            profile_fields['status'] = request.json["status"]
+        if request.json["githubusername"]:
+            profile_fields['githubusername'] = request.json["githubusername"]
+        if request.json["skills"]:
+            profile_fields['skills'] = request.json["skills"].split(',')
+
+        profile_fields['social'] = {}
+        if request.json["youtube"]:
+            profile_fields['social']['youtube'] = request.json["youtube"]
+        if request.json["twitter"]:
+            profile_fields['social']['twitter'] = request.json["twitter"]
+        if request.json["facebook"]:
+            profile_fields['social']['facebook'] = request.json["facebook"]
+        if request.json["linkedin"]:
+            profile_fields['social']['linkedin'] = request.json["linkedin"]
+        if request.json["instagram"]:
+            profile_fields['social']['instagram'] = request.json["instagram"]
+
+        user = users_collection.find_one({"_id": ObjectId(userid)})
+        if (user):
+            profile = profile_collection.find_one({"user": ObjectId(userid)})
+            if profile:
+               complete_profile = profile_collection.update_one({"user": ObjectId(userid)}, {"$set": profile_fields})
+               return jsonify(str(complete_profile))
+            else:
+                profile_handle = profile_collection.find_one({"handle": profile_fields['handle']})
+                if profile_handle:
+                    return jsonify({'msg': 'That Handle Already Exists'}), 400
+                else:
+                    profile_id = profile_collection.insert_one(profile_fields).inserted_id
+                    return jsonify(str(ObjectId(profile_id)))
+
+        # print(email[0])
+        id = profile_collection.insert_one({"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
+                            "comments": []}).inserted_id
+        logging.debug('This is a debug message', id)
+        return jsonify(str(ObjectId(id)))
+        # return id
+
+
+@app.route('/getone/<id>', methods=["GET"])
 def getone(id):
-    res = db.find_one({"_id":ObjectId(id)})
+    res = db.find_one({"_id": ObjectId(id)})
     print(res)
-    return {"_ID":str(ObjectId(res["_id"])),"name":res["name"],"email":res["email"],"password":res["password"]}
+    return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "email": res["email"], "password": res["password"]}
 
 # if __name__ == "__main__":
 #     app.run(port=5000, dubug=True)
