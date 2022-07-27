@@ -77,9 +77,10 @@ def getpost():
         id = posts_collection.insert_one(
             {"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
              "comments": []}).inserted_id
-        logging.debug('This is a debug message', id)
-        return jsonify(str(ObjectId(id)))
-        # return id
+        res = posts_collection.find_one({"_id": ObjectId(id)})
+        return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                "likes": res["likes"], "comments": res["comments"]}
+        
 
 
 # delete / update / get single post
@@ -112,25 +113,27 @@ def likepost(id):
     print(user)
     if (user):
         post = posts_collection.find_one({"_id": ObjectId(id)})
-        print(post)
-        if not post["likes"]:
-            posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
-                "likes": [userid],
-            }})
-            res = posts_collection.find_one({"_id": ObjectId(id)})
-            return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
-                    "likes": res["likes"], "comments": res["comments"]}
-        elif userid in post["likes"]:
-            return jsonify({'msg': 'User already liked this Post'}), 400
-        else:
-            likes = post["likes"]
-            likes.append(userid)
-            posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
-                "likes": likes,
-            }})
-            res = posts_collection.find_one({"_id": ObjectId(id)})
-            return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
-                    "likes": res["likes"], "comments": res["comments"]}
+        if post: 
+            print(post)
+            if not post["likes"]:
+                posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+                    "likes": [userid],
+                }})
+                res = posts_collection.find_one({"_id": ObjectId(id)})
+                return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                        "likes": res["likes"], "comments": res["comments"]}
+            elif userid in post["likes"]:
+                return jsonify({'msg': 'User already liked this Post'}), 400
+            else:
+                likes = post["likes"]
+                likes.append(userid)
+                posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
+                    "likes": likes,
+                }})
+                res = posts_collection.find_one({"_id": ObjectId(id)})
+                return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
+                        "likes": res["likes"], "comments": res["comments"]}
+        return jsonify({'msg': 'Post dose not exist'}), 400
     return jsonify({'msg': 'User dose not exist'}), 400
 
 
@@ -231,7 +234,7 @@ def get_post_profile():
             return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
                     "handle": res["handle"],
                     "company": res["company"], "website": res["website"], "location": res["location"],
-                    "bio": res["bio"],
+                    "bio": res["bio"], "experience": res["experience"], "education": res["education"],
                     "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
                     "social": res["social"]}
     elif request.method == "DELETE":
