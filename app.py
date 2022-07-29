@@ -52,7 +52,7 @@ def login():
                 identity=(str(user_from_db['_id']), user_from_db['email'], user_from_db['name']))  # create jwt token
             return jsonify(access_token=access_token), 200
 
-    return jsonify({'msg': 'The email or password is incorrect'}), 401
+    return jsonify({'common': 'The email or password is incorrect'}), 401
 
 
 # Get All Posts Or Add New Post
@@ -73,9 +73,10 @@ def getpost():
         # errors = validatePostInput(request.json)
         # print(errors)
         userid = get_jwt_identity()[0]
+        name = get_jwt_identity()[2]
         # print(email[0])
         id = posts_collection.insert_one(
-            {"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
+            {"name": name, "text": request.json["text"], "user": userid, "likes": [],
              "comments": []}).inserted_id
         res = posts_collection.find_one({"_id": ObjectId(id)})
         return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "text": res["text"], "user": res["user"],
@@ -169,6 +170,7 @@ def unlikepost(id):
 @jwt_required()
 def commentpost(id):
     userid = get_jwt_identity()[0]
+    name = get_jwt_identity()[2]
     print(userid)
     user = users_collection.find_one({"_id": ObjectId(userid)})
     print(user)
@@ -176,7 +178,7 @@ def commentpost(id):
         post = posts_collection.find_one({"_id": ObjectId(id)})
         print(post)
         if not post["comments"]:
-            comment = {"id": time.time(), "name": request.json["name"], "text": request.json["text"], "user": userid}
+            comment = {"id": time.time(), "name": name, "text": request.json["text"], "user": userid}
             posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
                 "comments": [comment]
             }})
@@ -185,7 +187,7 @@ def commentpost(id):
                     "likes": res["likes"], "comments": res["comments"]}
         else:
             comments = post["comments"]
-            comment = {"id": time.time(), "name": request.json["name"], "text": request.json["text"], "user": userid}
+            comment = {"id": time.time(), "name": name, "text": request.json["text"], "user": userid}
             comments.append(comment)
             posts_collection.update_one({"_id": ObjectId(id)}, {"$set": {
                 "comments": comments,
@@ -232,11 +234,17 @@ def get_post_profile():
             return jsonify({'msg': 'There is no Profile for this User'}), 404
         else:
             return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
-                    "handle": res["handle"],
-                    "company": res["company"], "website": res["website"], "location": res["location"],
-                    "bio": res["bio"], "experience": res["experience"], "education": res["education"],
-                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
-                    "social": res["social"]}
+                    "handle": res["handle"],"status": res["status"],"skills": res["skills"],
+                    "company": "" if "company" not in res else res["company"],
+                    "website": "" if "website" not in res else res["website"],
+                    "location": "" if "location" not in res else res["location"],
+                    "bio": "" if "bio" not in res else res["bio"],
+                    "githubusername": "" if "githubusername" not in res else res["githubusername"],
+                    "social": "" if "social" not in res else res["social"],
+                    "experience": "" if "experience" not in res else res["experience"],
+                    "education": "" if "education" not in res else res["education"],
+                    "date": "" if "date" not in res else res["date"],
+                    }
     elif request.method == "DELETE":
         userid = get_jwt_identity()[0]
         user = users_collection.find_one({"_id": ObjectId(userid)})
@@ -294,32 +302,58 @@ def get_post_profile():
             profile_fields['social']['instagram'] = request.json["instagram"]
 
         user = users_collection.find_one({"_id": ObjectId(userid)})
-        if (user):
+        if user:
             profile = profile_collection.find_one({"user": ObjectId(userid)})
             if profile:
-                profile_collection.update_one({"user": ObjectId(userid)}, {"$set": profile_fields})
-                res = profile_collection.find_one({"user": ObjectId(userid)})
-                return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
-                        "handle": res["handle"],
-                        "company": res["company"], "website": res["website"], "location": res["location"],
-                        "bio": res["bio"],
-                        "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
-                        "social": res["social"], "experience": res["experience"], "education": res["education"],
-                        "date": res["date"]}
+
+                profile_handle = profile_collection.find_one({"handle": profile_fields['handle']})
+
+                if not profile_handle:
+                    profile_collection.update_one({"user": ObjectId(userid)}, {"$set": profile_fields})
+                    res = profile_collection.find_one({"user": ObjectId(userid)})
+                    return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
+                            "handle": res["handle"], "status": res["status"], "skills": res["skills"],
+                            "company": "" if "company" not in res else res["company"],
+                            "website": "" if "website" not in res else res["website"],
+                            "location": "" if "location" not in res else res["location"],
+                            "bio": "" if "bio" not in res else res["bio"],
+                            "githubusername": "" if "githubusername" not in res else res["githubusername"],
+                            "social": "" if "social" not in res else res["social"],
+                            "experience": "" if "experience" not in res else res["experience"],
+                            "education": "" if "education" not in res else res["education"],
+                            "date": "" if "date" not in res else res["date"],
+                            }
+                elif profile_handle['handle'] == profile['handle']:
+                    profile_collection.update_one({"user": ObjectId(userid)}, {"$set": profile_fields})
+                    res = profile_collection.find_one({"user": ObjectId(userid)})
+                    return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
+                            "handle": res["handle"], "status": res["status"], "skills": res["skills"],
+                            "company": "" if "company" not in res else res["company"],
+                            "website": "" if "website" not in res else res["website"],
+                            "location": "" if "location" not in res else res["location"],
+                            "bio": "" if "bio" not in res else res["bio"],
+                            "githubusername": "" if "githubusername" not in res else res["githubusername"],
+                            "social": "" if "social" not in res else res["social"],
+                            "experience": "" if "experience" not in res else res["experience"],
+                            "education": "" if "education" not in res else res["education"],
+                            "date": "" if "date" not in res else res["date"],
+                            }
+                else:
+                    return jsonify({'handle': 'That Handle Already Exists'}), 400
             else:
                 profile_handle = profile_collection.find_one({"handle": profile_fields['handle']})
                 if profile_handle:
-                    return jsonify({'msg': 'That Handle Already Exists'}), 400
+                    return jsonify({'handle': 'That Handle Already Exists'}), 400
                 else:
                     profile_id = profile_collection.insert_one(profile_fields).inserted_id
                     return jsonify(str(ObjectId(profile_id)))
-
+        # return jsonify({'user': 'User dose not exists!'}), 400
         # print(email[0])
-        id = profile_collection.insert_one(
-            {"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
-             "comments": []}).inserted_id
-        logging.debug('This is a debug message', id)
-        return jsonify(str(ObjectId(id)))
+        # id = profile_collection.insert_one(
+        #     {"name": request.json["name"], "text": request.json["text"], "user": userid, "likes": [],
+        #      "comments": []}).inserted_id
+        # logging.debug('This is a debug message', id)
+        # return jsonify(str(ObjectId(id)))
         # return id
 
 
@@ -331,10 +365,16 @@ def get_all_profiles():
     for res in profile_collection.find():
         profiles.append(
             {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"], "handle": res["handle"],
-             "company": res["company"], "website": res["website"], "location": res["location"], "bio": res["bio"],
-             "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
-             "social": res["social"], "experience": res["experience"], "education": res["education"],
-             "date": res["date"]}
+             "status": res["status"], "skills": res["skills"],
+             "company": "" if "company" not in res else res["company"],
+             "website": "" if "website" not in res else res["website"],
+             "location": "" if "location" not in res else res["location"],
+             "bio": "" if "bio" not in res else res["bio"],
+             "githubusername": "" if "githubusername" not in res else res["githubusername"],
+             "social": "" if "social" not in res else res["social"],
+             "experience": "" if "experience" not in res else res["experience"],
+             "education": "" if "education" not in res else res["education"],
+             "date": "" if "date" not in res else res["date"],}
         )
     return jsonify(profiles)
 
@@ -396,12 +436,16 @@ def add_exp_to_profile():
             }})
             res = profile_collection.find_one({"user": ObjectId(userid)})
             return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
-                    "handle": res["handle"],
-                    "company": res["company"], "website": res["website"], "location": res["location"],
-                    "bio": res["bio"],
-                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
-                    "social": res["social"], "experience": res["experience"], "education": res["education"],
-                    "date": res["date"]}
+                    "handle": res["handle"], "status": res["status"], "skills": res["skills"],
+                    "company": "" if "company" not in res else res["company"],
+                    "website": "" if "website" not in res else res["website"],
+                    "location": "" if "location" not in res else res["location"],
+                    "bio": "" if "bio" not in res else res["bio"],
+                    "githubusername": "" if "githubusername" not in res else res["githubusername"],
+                    "social": "" if "social" not in res else res["social"],
+                    "experience": "" if "experience" not in res else res["experience"],
+                    "education": "" if "education" not in res else res["education"],
+                    "date": "" if "date" not in res else res["date"], }
         else:
             return jsonify({'msg': 'Profile dose not exist'}), 400
     return jsonify({'msg': 'User dose not exist'}), 400
@@ -433,12 +477,16 @@ def add_education_to_profile():
             }})
             res = profile_collection.find_one({"user": ObjectId(userid)})
             return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
-                    "handle": res["handle"],
-                    "company": res["company"], "website": res["website"], "location": res["location"],
-                    "bio": res["bio"],
-                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
-                    "social": res["social"], "experience": res["experience"], "education": res["education"],
-                    "date": res["date"]}
+                    "handle": res["handle"],"status": res["status"],"skills": res["skills"],
+                    "company": "" if "company" not in res else res["company"],
+                    "website": "" if "website" not in res else res["website"],
+                    "location": "" if "location" not in res else res["location"],
+                    "bio": "" if "bio" not in res else res["bio"],
+                    "githubusername": "" if "githubusername" not in res else res["githubusername"],
+                    "social": "" if "social" not in res else res["social"],
+                    "experience": "" if "experience" not in res else res["experience"],
+                    "education": "" if "education" not in res else res["education"],
+                    "date": "" if "date" not in res else res["date"], }
         else:
             return jsonify({'msg': 'Profile dose not exist'}), 400
     return jsonify({'msg': 'User dose not exist'}), 400
@@ -459,12 +507,16 @@ def delete_experience(exp_idx):
             }})
             res = profile_collection.find_one({"user": ObjectId(userid)})
             return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
-                    "handle": res["handle"],
-                    "company": res["company"], "website": res["website"], "location": res["location"],
-                    "bio": res["bio"],
-                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
-                    "social": res["social"], "experience": res["experience"], "education": res["education"],
-                    "date": res["date"]}
+                    "handle": res["handle"], "status": res["status"], "skills": res["skills"],
+                    "company": "" if "company" not in res else res["company"],
+                    "website": "" if "website" not in res else res["website"],
+                    "location": "" if "location" not in res else res["location"],
+                    "bio": "" if "bio" not in res else res["bio"],
+                    "githubusername": "" if "githubusername" not in res else res["githubusername"],
+                    "social": "" if "social" not in res else res["social"],
+                    "experience": "" if "experience" not in res else res["experience"],
+                    "education": "" if "education" not in res else res["education"],
+                    "date": "" if "date" not in res else res["date"], }
         else:
             return jsonify({'msg': 'profile dose not exist'}), 400
     return jsonify({'msg': 'User dose not exist'}), 400
@@ -485,12 +537,16 @@ def delete_education(edu_idx):
             }})
             res = profile_collection.find_one({"user": ObjectId(userid)})
             return {"user": str(ObjectId(res["user"])), "email": res["email"], "name": res["name"],
-                    "handle": res["handle"],
-                    "company": res["company"], "website": res["website"], "location": res["location"],
-                    "bio": res["bio"],
-                    "status": res["status"], "githubusername": res["githubusername"], "skills": res["skills"],
-                    "social": res["social"], "experience": res["experience"], "education": res["education"],
-                    "date": res["date"]}
+                    "handle": res["handle"], "status": res["status"], "skills": res["skills"],
+                    "company": "" if "company" not in res else res["company"],
+                    "website": "" if "website" not in res else res["website"],
+                    "location": "" if "location" not in res else res["location"],
+                    "bio": "" if "bio" not in res else res["bio"],
+                    "githubusername": "" if "githubusername" not in res else res["githubusername"],
+                    "social": "" if "social" not in res else res["social"],
+                    "experience": "" if "experience" not in res else res["experience"],
+                    "education": "" if "education" not in res else res["education"],
+                    "date": "" if "date" not in res else res["date"], }
         else:
             return jsonify({'msg': 'profile dose not exist'}), 400
     return jsonify({'msg': 'User dose not exist'}), 400

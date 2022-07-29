@@ -5,6 +5,7 @@ import TextAreaFieldGroup from '../common/TextAreaFieldGroup';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { addExperience } from '../../actions/profileActions';
+import { addExperienceValidation } from '../../validation/profileValidation';
 
 class AddExperience extends Component {
   constructor(props) {
@@ -44,7 +45,15 @@ class AddExperience extends Component {
       current: this.state.current,
       description: this.state.description,
     };
-    this.props.addExperience(expData, this.props.history);
+
+    
+    const errors = addExperienceValidation(expData)
+    console.log("errors",errors)
+    if(Object.keys(errors).length > 0){
+      this.setState({errors})
+    } else {
+      this.props.addExperience(expData, this.props.history);
+    }
   }
 
   onChange(e) {
@@ -76,7 +85,7 @@ class AddExperience extends Component {
               <small className="d-block pb-3">* = required fields</small>
               <form onSubmit={this.onSubmit}>
                 <TextFieldGroup
-                  placeholder="Company"
+                  placeholder="* Company"
                   name="company"
                   value={this.state.company}
                   onChange={this.onChange}

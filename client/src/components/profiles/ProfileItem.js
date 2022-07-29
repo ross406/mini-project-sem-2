@@ -6,15 +6,18 @@ import isEmpty from '../../validation/is-empty';
 class ProfileItem extends Component {
   render() {
     const { profile } = this.props;
-
+    console.log("PROFILEEEE",profile)
     return (
       <div className="card card-body bg-light mb-3">
         <div className="row">
           <div className="col-2">
-            <img src={profile.user.avatar} className="rounded-circle" />
+            <div style={{width:"150px",height:"150px",borderRadius:"50%",backgroundColor:"black",color:"white",textAlign:"center"}}>
+              <h1 style={{fontSize:"100px"}}>{String(profile.name).toUpperCase().slice(0, 1)}</h1>
+            </div>
+            {/* <img src={profile.user.avatar} className="rounded-circle" /> */}
           </div>
           <div className="col-lg-6 col-md-4 col-8">
-            <h3>{profile.user.name}</h3>
+            <h3>{profile.name}</h3>
             <p>
               {profile.status}{' '}
               {isEmpty(profile.company) ? null : (

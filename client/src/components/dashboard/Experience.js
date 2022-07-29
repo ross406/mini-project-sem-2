@@ -11,7 +11,7 @@ class Experience extends Component {
   }
 
   render() {
-    const experience = this.props.experience.map((exp) => (
+    const experience = this.props.experience.map((exp,index) => (
       <tr key={exp._id}>
         <td>{exp.company}</td>
         <td>{exp.title}</td>
@@ -25,7 +25,7 @@ class Experience extends Component {
         </td>
         <td>
           <button
-            onClick={this.onDeleteClick.bind(this, exp._id)}
+            onClick={this.onDeleteClick.bind(this, index)}
             className="btn btn-danger"
           >
             Delete

@@ -39,7 +39,7 @@ export default function (state = initialState, action) {
     case DELETE_POST:
       return {
         ...state,
-        posts: state.posts.filter((post) => post._id !== action.payload),
+        posts: state.posts.filter((post) => post._ID !== action.payload),
       };
     default:
       return state;

@@ -15,12 +15,15 @@ class CommentItem extends Component {
       <div className="card card-body mb-3">
         <div className="row">
           <div className="col-md-2">
-            <a href="profile.html">
-              <img
+            <a href="">
+            <div style={{width:"100px",height:"100px",borderRadius:"50%",backgroundColor:"black",color:"white",textAlign:"center",margin:"auto"}}>
+                  <h1 style={{fontSize:"70px"}}>{String(comment.name).toUpperCase().slice(0, 1)}</h1>
+                </div>
+              {/* <img
                 className="rounded-circle d-none d-md-block"
                 src={comment.avatar}
                 alt=""
-              />
+              /> */}
             </a>
             <br />
             <p className="text-center">{comment.name}</p>

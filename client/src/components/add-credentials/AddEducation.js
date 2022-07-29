@@ -5,6 +5,7 @@ import TextAreaFieldGroup from '../common/TextAreaFieldGroup';
 import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { addEducation } from '../../actions/profileActions';
+import { addEducationValidation } from '../../validation/profileValidation';
 
 class AddEducation extends Component {
   constructor(props) {
@@ -44,7 +45,14 @@ class AddEducation extends Component {
       current: this.state.current,
       description: this.state.description,
     };
-    this.props.addEducation(eduData, this.props.history);
+
+    const errors = addEducationValidation(eduData)
+    console.log("errors",errors)
+    if(Object.keys(errors).length > 0){
+      this.setState({errors})
+    } else {
+      this.props.addEducation(eduData, this.props.history);
+    }
   }
 
   onChange(e) {

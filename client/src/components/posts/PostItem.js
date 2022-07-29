@@ -6,8 +6,11 @@ import { Link } from 'react-router-dom';
 import { deletePost, addLike, removeLike } from '../../actions/postActions';
 
 class PostItem extends Component {
+  constructor(props){
+    super(props)
+  }
   onDeleteClick(id) {
-    this.props.deletePost(id);
+    this.props.deletePost(id,this.props.history);
   }
 
   onLikeClick(id) {
@@ -34,12 +37,15 @@ class PostItem extends Component {
       <div className="card card-body mb-3">
         <div className="row">
           <div className="col-md-2">
-            <a href="profile.html">
-              <img
+            <a href="">
+              <div style={{width:"120px",height:"120px",borderRadius:"50%",backgroundColor:"black",color:"white",textAlign:"center",margin:"auto"}}>
+                  <h1 style={{fontSize:"90px"}}>{String(post.name).toUpperCase().slice(0, 1)}</h1>
+                </div>
+              {/* <img
                 className="rounded-circle d-none d-md-block"
                 src={post.avatar}
                 alt=""
-              />
+              /> */}
             </a>
             <br />
             <p className="text-center">{post.name}</p>

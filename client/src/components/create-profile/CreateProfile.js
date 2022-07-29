@@ -7,6 +7,7 @@ import TextAreaFieldGroup from '../common/TextAreaFieldGroup';
 import InputGroup from '../common/InputGroup';
 import SelectListGroup from '../common/SelectListGroup';
 import { createProfile } from '../../actions/profileActions';
+import { createProfileValidation } from '../../validation/profileValidation';
 
 class CreateProfile extends Component {
   constructor(props) {
@@ -35,12 +36,15 @@ class CreateProfile extends Component {
 
   componentWillReceiveProps(nextProps) {
     if (nextProps.errors) {
+      console.log("nextProps.errors",nextProps.errors)
       this.setState({ errors: nextProps.errors });
     }
   }
 
   onSubmit(e) {
     e.preventDefault();
+
+
 
     const profileData = {
       handle: this.state.handle,
@@ -58,7 +62,12 @@ class CreateProfile extends Component {
       instagram: this.state.instagram,
     };
 
-    this.props.createProfile(profileData, this.props.history);
+    const errors = createProfileValidation(profileData)
+    if(Object.keys(errors).length > 0){
+      this.setState({errors})
+    } else {
+      this.props.createProfile(profileData, this.props.history);
+    }
   }
 
   onChange(e) {

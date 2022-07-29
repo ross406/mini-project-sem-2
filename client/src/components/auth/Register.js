@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import { withRouter } from 'react-router-dom';
-
+import { registerValidation } from '../../validation/authvalidation'
 import { connect } from 'react-redux';
 import { registerUser } from '../../actions/authActions';
 import TextFieldGroup from '../common/TextFieldGroup';
@@ -46,7 +46,15 @@ class Register extends Component {
       password2: this.state.password2,
     };
 
-    this.props.registerUser(newUser, this.props.history);
+    const errors = registerValidation(newUser)
+    console.log("errors",errors)
+    if(Object.keys(errors).length > 0){
+      this.setState({errors})
+    } else {
+      delete newUser.password2
+      this.props.registerUser(newUser, this.props.history);
+    }
+
   }
 
   render() {
@@ -98,6 +106,7 @@ class Register extends Component {
                   onChange={this.onChange}
                   error={errors.password2}
                 />
+                {errors.common && <p style={{color:"red",fontSize:"12px"}}>{errors.common}</p>}
                 <input type="submit" className="btn btn-info btn-block mt-4" />
               </form>
             </div>
