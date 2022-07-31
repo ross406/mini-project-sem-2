@@ -18,7 +18,9 @@ export const addExperienceValidation = (expData) => {
         if((isEmpty(expData.company))) errors.company = "Company is required!"
         if((isEmpty(expData.title))) errors.title = "Title is required!"
         if((isEmpty(expData.from))) errors.from = "From date is required!"
-        if((isEmpty(expData.to))) errors.to = "To date is required!"
+        if(!expData.current) {
+            if((isEmpty(expData.to))) errors.to = "To date is required!"
+        }
         return errors;
     }
     return errors;

@@ -4,6 +4,7 @@ import { connect } from 'react-redux';
 import classnames from 'classnames';
 import { Link } from 'react-router-dom';
 import { deletePost, addLike, removeLike } from '../../actions/postActions';
+import parse from 'html-react-parser';
 
 class PostItem extends Component {
   constructor(props){
@@ -51,7 +52,8 @@ class PostItem extends Component {
             <p className="text-center">{post.name}</p>
           </div>
           <div className="col-md-10">
-            <p className="lead">{post.text}</p>
+            {/* <p className="lead">{parse(post.text)}</p> */}
+            {parse(post.text)}
             {showActions ? (
               <span>
                 <button

@@ -10,7 +10,7 @@ class ProfileCreds extends Component {
         <h4>{exp.company}</h4>
         <p>
           <Moment format="YYYY/MM/DD">{exp.from}</Moment> -
-          {exp.to === null ? (
+          {exp.current ? (
             ' Now'
           ) : (
             <Moment format="YYYY/MM/DD">{exp.to}</Moment>
@@ -44,7 +44,7 @@ class ProfileCreds extends Component {
         <h4>{edu.schoollll}</h4>
         <p>
           <Moment format="YYYY/MM/DD">{edu.from}</Moment> -
-          {edu.to === null ? (
+          {edu.current ? (
             ' Now'
           ) : (
             <Moment format="YYYY/MM/DD">{edu.to}</Moment>

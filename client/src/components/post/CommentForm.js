@@ -1,19 +1,22 @@
 import React, { Component } from 'react';
 import PropTypes from 'prop-types';
+import {Editor, EditorState} from 'draft-js';
 import { connect } from 'react-redux';
 import TextAreaFieldGroup from '../common/TextAreaFieldGroup';
 import { addComment } from '../../actions/postActions';
+import {stateToHTML} from 'draft-js-export-html';
 
 class CommentForm extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      text: '',
+      editorState: EditorState.createEmpty(),
       errors: {},
     };
 
     this.onChange = this.onChange.bind(this);
     this.onSubmit = this.onSubmit.bind(this);
+    this.onEditorChange = editorState => this.setState({editorState});
   }
 
   componentWillReceiveProps(newProps) {
@@ -27,9 +30,10 @@ class CommentForm extends Component {
 
     const { user } = this.props.auth;
     const { postId } = this.props;
+    let html = stateToHTML(this.state.editorState.getCurrentContent());
 
     const newComment = {
-      text: this.state.text,
+      text: html,
       name: user.name,
       avatar: user.avatar,
     };
@@ -52,14 +56,15 @@ class CommentForm extends Component {
           </div>
           <div className="card-body">
             <form onSubmit={this.onSubmit}>
-              <div className="form-group">
-                <TextAreaFieldGroup
+            <div style={{border:"1px solid",borderRadius:"7px", minHeight:"70px",padding:"10px"}} className="form-group">
+              <Editor editorState={this.state.editorState} onChange={this.onEditorChange} />
+                {/* <TextAreaFieldGroup
                   placeholder="Reply To Post"
                   name="text"
                   value={this.state.text}
                   onChange={this.onChange}
                   error={errors.text}
-                />
+                /> */}
               </div>
               <button type="submit" className="btn btn-dark">
                 Submit
