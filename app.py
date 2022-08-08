@@ -553,11 +553,11 @@ def delete_education(edu_idx):
 
 
 
-@app.route('/getone/<id>', methods=["GET"])
-def getone(id):
-    res = db.find_one({"_id": ObjectId(id)})
-    print(res)
-    return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "email": res["email"], "password": res["password"]}
+# @app.route('/getone/<id>', methods=["GET"])
+# def getone(id):
+#     res = db.find_one({"_id": ObjectId(id)})
+#     print(res)
+#     return {"_ID": str(ObjectId(res["_id"])), "name": res["name"], "email": res["email"], "password": res["password"]}
 
 # if __name__ == "__main__":
 #     app.run(port=5000, dubug=True)

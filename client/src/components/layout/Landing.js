@@ -13,6 +13,7 @@ class Landing extends Component {
   render() {
     return (
       <div className="landing">
+        <img src={require("../../img/showcase.jpg")} />
         <div className="dark-overlay landing-inner text-light">
           <div className="container">
             <div className="row">
