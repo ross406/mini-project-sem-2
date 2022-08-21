@@ -33,7 +33,9 @@ export const addEducationValidation = (eduData) => {
         if((isEmpty(eduData.degree))) errors.degree = "Degree is required!"
         if((isEmpty(eduData.fieldofstudy))) errors.fieldofstudy = "Field Of Study is required!"
         if((isEmpty(eduData.from))) errors.from = "From date is required!"
-        if((isEmpty(eduData.to))) errors.to = "To date is required!"
+        if(!eduData.current) {
+            if((isEmpty(eduData.to))) errors.to = "To date is required!"
+        }       
         return errors;
     }
     return errors;

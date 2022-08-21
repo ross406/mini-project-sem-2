@@ -41,7 +41,7 @@ class ProfileCreds extends Component {
 
     const eduItems = education.map((edu) => (
       <li key={edu._id} className="list-group-item">
-        <h4>{edu.schoollll}</h4>
+        <h4>{edu.school}</h4>
         <p>
           <Moment format="YYYY/MM/DD">{edu.from}</Moment> -
           {edu.current ? (
